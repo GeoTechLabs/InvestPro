@@ -1,0 +1,106 @@
+#
+# This is a Shiny web application. You can run the application by clicking
+# the 'Run App' button above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    http://shiny.rstudio.com/
+#
+install.packages("shiny")
+# Install and load required packages
+if (!requireNamespace("shiny", quietly = TRUE)) {
+  install.packages("shiny")
+}
+if (!requireNamespace("leaflet", quietly = TRUE)) {
+  install.packages("leaflet")
+}
+library(shiny)
+library(leaflet)
+
+# Dummy data for illustration
+locations <- data.frame(
+  Lat = c(40.7128, 41.8781, 34.0522, 37.7749),
+  Long = c(-74.0060, -87.6298, -118.2437, -122.4194),
+  Name = c("Location A", "Location B", "Location C", "Location D"),
+  Rent = c("Less than 2000", "2000-5000", "5000-10000", "More than 10000"),
+  FoodJointType = c("Snacks Joint", "Sweets Shop", "Restaurant", "Snacks Joint"),
+  Footfall = c("0-100 persons", "100-200 persons", "More than 200 persons", "0-100 persons"),
+  CompetitionDistance = c("Less than 100m", "More than 100m", "Less than 100m", "More than 100m")
+)
+
+# Set the initial center to the first location
+initial_center <- c(locations$Lat[1], locations$Long[1])
+initial_zoom <- 14  # You can adjust the zoom level
+
+# Define UI
+ui <- fluidPage(
+  titlePanel("Suitable Restaurant Locator"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("rent", "Rent:", 
+                  choices = c("Less than 2000", "2000-5000", "5000-10000", "More than 10000")),
+      selectInput("foodJointType", "Type of Food Joint:",
+                  choices = c("Snacks Joint", "Sweets Shop", "Restaurant")),
+      selectInput("footfall", "Footfall per Day:",
+                  choices = c("0-100 persons", "100-200 persons", "More than 200 persons")),
+      selectInput("competitionDistance", "Competition Distance:",
+                  choices = c("Less than 100m", "More than 100m")),
+    ),
+    mainPanel(
+      leafletOutput("map", width = "100%", height = "500px"),
+      # Additional HTML for the footer with improved styling
+      tags$div(
+        style = "position: fixed; bottom: 0; width: 100%; background-color: #f1f1f1; padding: 10px; text-align: center;",
+        tags$p(
+          style = "margin: 5px 0;", 
+          "About Us:Suitable Location for food joint investments."
+        ),
+        
+        tags$p(
+          style = "margin: 5px 0;", 
+          "Social Handles: Follow us on ", 
+          tags$a("Twitter", href = "#", target = "_blank"), 
+          " and ", 
+          tags$a("Facebook", href = "#", target = "_blank"), 
+          "."
+        )
+    )
+  )
+)
+)
+
+# Define Server Logic
+server <- function(input, output, session) {
+  # Reactive function for dynamically updating the map
+  filtered_locations <- reactive({
+    filtered <- locations
+    
+    # Filter based on selected parameters
+    if (!is.null(input$rent)) {
+      filtered <- filtered[filtered$Rent %in% input$rent, ]
+    }
+    if (!is.null(input$foodJointType)) {
+      filtered <- filtered[filtered$FoodJointType %in% input$foodJointType, ]
+    }
+    if (!is.null(input$footfall)) {
+      filtered <- filtered[filtered$Footfall %in% input$footfall, ]
+    }
+    if (!is.null(input$competitionDistance)) {
+      filtered <- filtered[filtered$CompetitionDistance %in% input$competitionDistance, ]
+    }
+    
+    return(filtered)
+  })
+  
+  # Render the map with markers
+  output$map <- renderLeaflet({
+    leaflet() %>%
+      setView(lng = initial_center[2], lat = initial_center[1], zoom = initial_zoom) %>%
+      addTiles() %>%
+      addMarkers(data = filtered_locations(), ~Long, ~Lat, popup = ~Name) %>%
+      addMarkers(lng = initial_center[2], lat = initial_center[1], popup = "Default Location")
+  })
+}
+
+# Run the Shiny App
+shinyApp(ui = ui, server = server)
